@@ -3,15 +3,7 @@ import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 import toast from "react-hot-toast";
 
-import {
-  FaFolder,
-  FaFileAlt,
-  FaTrash,
-  FaDownload,
-  FaEdit,
-  FaUserCircle,
-  FaHome
-} from "react-icons/fa";
+import { FaFolder, FaFileAlt, FaTrash, FaDownload, FaEdit, FaUserCircle } from "react-icons/fa";
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -298,3 +290,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
