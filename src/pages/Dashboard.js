@@ -1,9 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 import toast from "react-hot-toast";
 
-import { FaFolder, FaFileAlt, FaTrash, FaDownload, FaEdit, FaUserCircle } from "react-icons/fa";
+import {
+  FaFolder,
+  FaFileAlt,
+  FaTrash,
+  FaDownload,
+  FaEdit,
+  FaUserCircle,
+  FaHome
+} from "react-icons/fa";
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -19,22 +27,23 @@ export default function Dashboard() {
   const [open, setOpen] = useState(false);
 
   /* ================= FETCH ================= */
-  const fetchFiles = async () => {
+
+  const fetchFiles = useCallback(async () => {
     const res = await API.get("/files", {
       params: { parent: currentFolder }
     });
     setFiles(res.data);
-  };
+  }, [currentFolder]);
 
-  const fetchFolders = async () => {
+  const fetchFolders = useCallback(async () => {
     const res = await API.get("/files/folders");
     setFolders(res.data);
-  };
+  }, []);
 
   useEffect(() => {
     fetchFiles();
     fetchFolders();
-  }, [currentFolder]);
+  }, [fetchFiles, fetchFolders]);
 
   /* ================= LOGOUT ================= */
   const logout = () => {
@@ -87,7 +96,7 @@ export default function Dashboard() {
     fetchFiles();
   };
 
-  /* ================= DOWNLOAD (FIXED) ================= */
+  /* ================= DOWNLOAD ================= */
   const downloadFile = async (url, filename) => {
     try {
       const res = await fetch(url);
@@ -290,4 +299,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
