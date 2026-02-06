@@ -13,6 +13,8 @@ import {
   FaHome
 } from "react-icons/fa";
 
+const BACKEND_URL = "https://backend-2-up29.onrender.com";
+
 export default function Dashboard() {
   const nav = useNavigate();
 
@@ -45,13 +47,12 @@ export default function Dashboard() {
     fetchFolders();
   }, [fetchFiles, fetchFolders]);
 
-  /* ================= LOGOUT ================= */
+  /* ================= ACTIONS ================= */
   const logout = () => {
     localStorage.clear();
     nav("/", { replace: true });
   };
 
-  /* ================= UPLOAD ================= */
   const upload = async (file) => {
     const form = new FormData();
     form.append("file", file);
@@ -62,65 +63,52 @@ export default function Dashboard() {
     fetchFiles();
   };
 
-  /* ================= CREATE FOLDER ================= */
   const createFolder = async () => {
     const name = prompt("Folder name");
     if (!name) return;
 
-    await API.post("/files/folder", {
-      name,
-      parentId: currentFolder
-    });
-
+    await API.post("/files/folder", { name, parentId: currentFolder });
     toast.success("Folder created");
     fetchFolders();
   };
 
-  /* ================= DELETE ================= */
   const remove = async (id, name) => {
-    const confirmDelete = window.confirm(
-      `Delete "${name}"?\nThis cannot be undone.`
-    );
-    if (!confirmDelete) return;
-
+    if (!window.confirm(`Delete "${name}"?`)) return;
     await API.delete(`/files/${id}`);
-    toast.success("Deleted successfully");
+    toast.success("Deleted");
     fetchFiles();
   };
 
-  /* ================= RENAME ================= */
   const rename = async (id, old) => {
     const name = prompt("Rename", old);
     if (!name) return;
-
     await API.put(`/files/${id}`, { name });
-    toast.success("Renamed successfully");
+    toast.success("Renamed");
     fetchFiles();
   };
 
-  /* ================= DOWNLOAD ================= */
-  const downloadFile = async (url, filename) => {
+  /* ================= FILE OPEN / DOWNLOAD (FIXED) ================= */
+
+  const openFileInNewTab = async (fileId) => {
     try {
-      const res = await fetch(url);
-      const blob = await res.blob();
+      const res = await API.get(`/files/open/${fileId}`);
+      window.open(res.data.url, "_blank");
+    } catch {
+      toast.error("Unable to open file");
+    }
+  };
 
-      const link = document.createElement("a");
-      link.href = window.URL.createObjectURL(blob);
-      link.download = filename;
-
-      document.body.appendChild(link);
-      link.click();
-
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(link.href);
+  const downloadFile = async (fileId) => {
+    try {
+      const res = await API.get(`/files/open/${fileId}`);
+      window.location.href = res.data.url;
     } catch {
       toast.error("Download failed");
     }
   };
 
   /* ================= HELPERS ================= */
-  const getFileType = (name) =>
-    name.split(".").pop().toUpperCase();
+  const getFileType = (name) => name.split(".").pop().toUpperCase();
 
   const sortedFiles = [...files]
     .filter(f => f.name.toLowerCase().includes(search.toLowerCase()))
@@ -130,20 +118,18 @@ export default function Dashboard() {
         : new Date(b.createdAt) - new Date(a.createdAt)
     );
 
-  const recentFiles = sortedFiles.slice(0, 4);
+  const recentFiles = sortedFiles.filter(f => !f.isFolder).slice(0, 4);
 
-  const usedStorageMB = files.length * 5; // dummy logic
+  const usedStorageMB = files.length * 5;
   const totalStorageMB = 15000;
 
   /* ================= UI ================= */
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex flex-col md:flex-row h-screen bg-gray-100">
 
-      {/* ================= SIDEBAR ================= */}
-      <div className="w-64 bg-white shadow-md p-6 flex flex-col">
-        <h2 className="text-xl font-bold text-blue-600 mb-6">
-          ☁ Cloud Drive
-        </h2>
+      {/* SIDEBAR */}
+      <div className="w-full md:w-64 bg-white shadow-md p-4 md:p-6">
+        <h2 className="text-xl font-bold text-blue-600 mb-4">☁ Cloud Drive</h2>
 
         <div
           onClick={() => {
@@ -155,9 +141,9 @@ export default function Dashboard() {
           <FaHome /> Home
         </div>
 
-        <p className="text-gray-400 text-xs mt-6 mb-2">FOLDERS</p>
+        <p className="text-gray-400 text-xs mt-4 mb-2">FOLDERS</p>
 
-        <div className="flex-1 overflow-auto space-y-1">
+        <div className="space-y-1 max-h-40 md:max-h-full overflow-auto">
           {folders.map((f) => (
             <div
               key={f._id}
@@ -173,11 +159,9 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Storage */}
+        {/* STORAGE */}
         <div className="mt-6">
-          <p className="text-xs text-gray-500 mb-1">
-            Storage used
-          </p>
+          <p className="text-xs text-gray-500 mb-1">Storage used</p>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
               className="bg-blue-600 h-2 rounded-full"
@@ -191,25 +175,23 @@ export default function Dashboard() {
 
         <button
           onClick={createFolder}
-          className="bg-blue-600 text-white py-2 rounded-lg mt-4 hover:bg-blue-700"
+          className="bg-blue-600 text-white py-2 rounded-lg mt-4 w-full hover:bg-blue-700"
         >
           + New Folder
         </button>
       </div>
 
-      {/* ================= MAIN ================= */}
-      <div className="flex-1 p-8 overflow-auto">
+      {/* MAIN */}
+      <div className="flex-1 p-4 md:p-8 overflow-auto">
 
         {/* HEADER */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
           <div>
-            <p className="text-sm text-gray-500">
-              Home / {currentName}
-            </p>
+            <p className="text-sm text-gray-500">Home / {currentName}</p>
             <h3 className="text-lg font-semibold">{currentName}</h3>
           </div>
 
-          <div className="flex gap-4 items-center">
+          <div className="flex flex-wrap gap-3 items-center">
             <select
               onChange={(e) => setSort(e.target.value)}
               className="border px-3 py-2 rounded-lg"
@@ -220,38 +202,37 @@ export default function Dashboard() {
 
             <input
               placeholder="Search files..."
-              className="border px-3 py-2 rounded-lg w-64"
+              className="border px-3 py-2 rounded-lg"
               onChange={(e) => setSearch(e.target.value)}
             />
 
-            <div className="relative">
-              <FaUserCircle
-                size={26}
-                className="cursor-pointer"
-                onClick={() => setOpen(!open)}
-              />
-              {open && (
-                <div className="absolute right-0 mt-2 bg-white shadow rounded w-28">
-                  <button
-                    onClick={logout}
-                    className="block w-full px-4 py-2 hover:bg-gray-100"
-                  >
-                    Logout
-                  </button>
-                </div>
-              )}
-            </div>
+            <FaUserCircle
+              size={26}
+              className="cursor-pointer"
+              onClick={() => setOpen(!open)}
+            />
+
+            {open && (
+              <button onClick={logout} className="text-sm text-red-600">
+                Logout
+              </button>
+            )}
           </div>
         </div>
 
-        {/* RECENT FILES */}
+        {/* RECENT FILES (FIXED) */}
         {recentFiles.length > 0 && (
           <>
             <h4 className="font-semibold mb-3">Recent files</h4>
-            <div className="grid grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {recentFiles.map((f) => (
-                <div key={f._id} className="bg-white p-4 rounded-lg shadow">
-                  {f.name}
+                <div
+                  key={f._id}
+                  onClick={() => openFileInNewTab(f._id)}
+                  className="bg-white p-4 rounded-lg shadow cursor-pointer hover:shadow-md transition"
+                >
+                  <FaFileAlt className="text-blue-500 mb-2" />
+                  <p className="text-sm truncate">{f.name}</p>
                 </div>
               ))}
             </div>
@@ -260,7 +241,7 @@ export default function Dashboard() {
 
         {/* UPLOAD */}
         <div
-          className="border-2 border-dashed border-gray-300 bg-white p-10 rounded-xl
+          className="border-2 border-dashed border-gray-300 bg-white p-6 md:p-10 rounded-xl
                      text-center mb-8 hover:border-blue-400 hover:bg-blue-50"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
@@ -284,7 +265,7 @@ export default function Dashboard() {
             <p className="text-sm">Upload files to get started</p>
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {sortedFiles.map((f) => (
               <div
                 key={f._id}
@@ -305,12 +286,11 @@ export default function Dashboard() {
                   Modified {new Date(f.createdAt).toLocaleDateString()}
                 </p>
 
-                {/* ACTIONS */}
                 <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-5 opacity-0 group-hover:opacity-100">
                   {!f.isFolder && (
                     <FaDownload
                       className="cursor-pointer hover:text-blue-600"
-                      onClick={() => downloadFile(f.url, f.name)}
+                      onClick={() => downloadFile(f._id)}
                     />
                   )}
                   <FaEdit
